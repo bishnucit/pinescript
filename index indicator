@@ -1,0 +1,60 @@
+//@version=5
+indicator("Hybrid Allocation Index (Nifty + Nasdaq)", overlay=false)
+
+// === INPUT ===
+useNasdaq = input.bool(false, "Use Nasdaq instead of Chart Symbol")
+
+symbol = useNasdaq ? "NASDAQ:IXIC" : syminfo.tickerid
+price = request.security(symbol, "D", close)
+
+// === COMPONENTS ===
+
+// 1. Valuation proxy (Price vs 200 DMA)
+ma200 = ta.sma(price, 200)
+val1 = (price / ma200) * 100
+
+// 2. Long-term stretch (Price vs 5-year avg ~1250 trading days)
+ma5y = ta.sma(price, 1250)
+val2 = (price / ma5y) * 100
+
+// 3. Momentum filter (normalized RSI)
+rsi = ta.rsi(price, 14)
+val3 = (rsi / 100) * 100
+
+// === HYBRID SCORE ===
+hai = (val1 * 0.5) + (val2 * 0.3) + (val3 * 0.2)
+
+// === PLOT ===
+plot(hai, color=color.black, linewidth=2)
+
+// === ZONES ===
+bgcolor(hai < 80 ? color.new(color.green, 85) : na)
+bgcolor(hai >= 80 and hai < 95 ? color.new(color.lime, 85) : na)
+bgcolor(hai >= 95 and hai < 110 ? color.new(color.yellow, 85) : na)
+bgcolor(hai >= 110 and hai < 125 ? color.new(color.orange, 85) : na)
+bgcolor(hai >= 125 ? color.new(color.red, 85) : na)
+
+// === LEVELS ===
+hline(80, "Aggressive Buy", color=color.green)
+hline(95, "Buy", color=color.lime)
+hline(110, "Neutral", color=color.yellow)
+hline(125, "Reduce", color=color.orange)
+
+// === LABEL ===
+var label lbl = na
+label.delete(lbl)
+lbl := label.new(bar_index, hai, str.tostring(hai, "#.0"),
+     style=label.style_label_down, textcolor=color.white, color=color.black)
+
+
+
+//🎯 How to use this (important)
+//🟢 < 80 → Aggressive Buy - Crisis / panic zones - Go heavy equity
+
+//🟢 80–95 → Invest - Good long-term entry - SIP + lump sum
+
+//🟡 95–110 → Neutral - Stay invested - No big moves
+
+//🟠 110–125 → Reduce risk - Shift some to debt - Stop fresh aggressive buying
+
+//🔴 >125 → Book profits - Euphoria / overvaluation - Trim equity
