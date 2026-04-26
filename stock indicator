@@ -1,0 +1,77 @@
+//@version=5
+indicator("Stock Hybrid Allocation Indicator", overlay=false)
+
+// === INPUT ===
+useNasdaq = input.bool(false, "Compare with Nasdaq (else Nifty)")
+indexSymbol = useNasdaq ? "NASDAQ:IXIC" : "NSE:NIFTY"
+
+// === DATA ===
+price = close
+indexPrice = request.security(indexSymbol, "D", close)
+
+// === COMPONENTS ===
+
+// 1. Trend (Price vs 200 DMA)
+ma200 = ta.sma(price, 200)
+trend = (price / ma200) * 100
+
+// 2. Pullback (Price vs 50 DMA)
+ma50 = ta.sma(price, 50)
+pullback = (price / ma50) * 100
+
+// 3. Relative Strength (vs index)
+rs = (price / indexPrice)
+rs_ma = ta.sma(rs, 100)
+rel_strength = (rs / rs_ma) * 100
+
+// === HYBRID SCORE ===
+score = (trend * 0.4) + (pullback * 0.3) + (rel_strength * 0.3)
+
+// === PLOT ===
+plot(score, color=color.black, linewidth=2)
+
+// === ZONES ===
+bgcolor(score < 85 ? color.new(color.green, 85) : na)
+bgcolor(score >= 85 and score < 95 ? color.new(color.lime, 85) : na)
+bgcolor(score >= 95 and score < 110 ? color.new(color.yellow, 85) : na)
+bgcolor(score >= 110 and score < 125 ? color.new(color.orange, 85) : na)
+bgcolor(score >= 125 ? color.new(color.red, 85) : na)
+
+// === LEVELS ===
+hline(85, "Strong Buy Zone", color=color.green)
+hline(95, "Buy on Dips", color=color.lime)
+hline(110, "Neutral", color=color.yellow)
+hline(125, "Overextended", color=color.red)
+
+// === LABEL ===
+var label lbl = na
+label.delete(lbl)
+lbl := label.new(bar_index, score, str.tostring(score, "#.0"),
+     style=label.style_label_down, textcolor=color.white, color=color.black)    
+
+
+//🎯 How to use this (Stocks - important)
+
+//🟢 < 85 → Strong Buy
+// Stock in uptrend but temporarily beaten down
+// Best accumulation zone (buy aggressively in quality stocks)
+
+//🟢 85–95 → Buy on dips
+// Healthy pullbacks in strong stocks
+// Accumulate gradually (SIP style)
+
+//🟡 95–110 → Neutral
+// Fair value zone
+// Hold existing positions, avoid chasing
+
+//🟠 110–125 → Extended
+// Price running ahead of fundamentals/trend
+// Avoid fresh buying, be cautious
+
+//🔴 >125 → Overheated
+// Stock is stretched / euphoric
+// Consider partial profit booking
+
+//⚠️ Only buy in green zones IF:
+//✔ Stock is above 200 DMA (uptrend)
+//✔ Market trend is not weak
